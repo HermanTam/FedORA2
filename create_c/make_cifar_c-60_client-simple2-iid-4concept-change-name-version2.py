@@ -31,11 +31,12 @@ import cv2
 from scipy.ndimage import zoom as scizoom
 from scipy.ndimage.interpolation import map_coordinates
 import warnings
-
+from pathlib import Path
 warnings.simplefilter("ignore", UserWarning)
 
 def save_data(l, path_):
-    with open(path_, 'wb') as f:
+    Path(path_).parent.mkdir(parents=True, exist_ok=True)
+    with open(path_, "wb") as f:
         pickle.dump(l, f)
 
 
@@ -568,6 +569,8 @@ client_number = 60
 dirichlet_alpha = 0.5
 
 # Split CIFAR10 to clients by Dirichlet distribution.
+USE_NONIID_LABEL_DRIFT = os.environ.get("LABEL_DRIFT", "0") == "1"
+partition_tag = "noniid" if USE_NONIID_LABEL_DRIFT else "iid"
 
 print('splitting clients...')
 
@@ -578,8 +581,12 @@ original_labels_tr = [Y for X, Y in train_data]
 original_images_te = [X for X, Y in test_data]
 original_labels_te = [Y for X, Y in test_data]
 
-
-clients_images, clients_labels = get_iid_class_and_labels(original_images_tr, original_labels_tr, client_number)
+if USE_NONIID_LABEL_DRIFT:
+    print("Using Dirichlet-based non-iid label partition (label drift enabled).")
+    clients_images, clients_labels = get_noniid_class_and_labels(original_images_tr, original_labels_tr, client_number)
+else:
+    print("Using iid label partition (no additional label drift in data generator).")
+    clients_images, clients_labels = get_iid_class_and_labels(original_images_tr, original_labels_tr, client_number)
 
 
 
@@ -618,6 +625,7 @@ for i in range(client_number):
         clients_types[i] = 4
 
 print('saving...')
+dataset_root = f'./data/cifar10-c-60_client-simple2-{partition_tag}-4concept-change-name-version2'
 
 for i in range(client_number):
     client = {'images': np.uint8(np.array(clients_images[i])),
@@ -640,7 +648,7 @@ for i in range(client_number):
     #     j = i-45
     #     save_data(client, './data/cifar10-c-60_client-simple2-iid-4concept-change-name/concept4_{}.pkl'.format(j))
 
-    save_data(client,'./data/cifar10-c-60_client-simple2-iid-4concept-change-name-version2/{}.pkl'.format(i))
+    save_data(client, f'{dataset_root}/{i}.pkl')
     # save_data(client,'./data/cifar100-c/{}.pkl'.format(i))
 
 
@@ -680,10 +688,10 @@ client_4 = {'images': np.uint8(np.array(test_cifar_c)),
               'labels': np.uint8(np.array(test_labels_4)),
               'type': 3}
 
-save_data(client_1,'./data/cifar10-c-60_client-simple2-iid-4concept-change-name-version2/test-1.pkl')
-save_data(client_2,'./data/cifar10-c-60_client-simple2-iid-4concept-change-name-version2/test-2.pkl')
-save_data(client_3,'./data/cifar10-c-60_client-simple2-iid-4concept-change-name-version2/test-3.pkl')
-save_data(client_4,'./data/cifar10-c-60_client-simple2-iid-4concept-change-name-version2/test-4.pkl')
+save_data(client_1, f'{dataset_root}/test-1.pkl')
+save_data(client_2, f'{dataset_root}/test-2.pkl')
+save_data(client_3, f'{dataset_root}/test-3.pkl')
+save_data(client_4, f'{dataset_root}/test-4.pkl')
 # save_data(client_1,'./data/cifar100-c/test-1.pkl')
 # save_data(client_2,'./data/cifar100-c/test-2.pkl')
 # save_data(client_3,'./data/cifar100-c/test-3.pkl')

@@ -32,11 +32,12 @@ import cv2
 from scipy.ndimage import zoom as scizoom
 from scipy.ndimage.interpolation import map_coordinates
 import warnings
-
+from pathlib import Path
 warnings.simplefilter("ignore", UserWarning)
 
 def save_data(l, path_):
-    with open(path_, 'wb') as f:
+    Path(path_).parent.mkdir(parents=True, exist_ok=True)
+    with open(path_, "wb") as f:
         pickle.dump(l, f)
 
 
@@ -642,11 +643,13 @@ def get_noniid_class_and_labels(original_images, original_labels, N):
 
         
         for i in range(N): 
-            p = torch.tensor(classes_by_index_len) / sum(classes_by_index_len) 
-            
-            # p = p + 1e-6  # Add a small constant to avoid zero values 
-            # q = dirichlet.Dirichlet(1.0 * p).sample()
-            q = dirichlet.Dirichlet(1.0 * p.float()).sample() 
+            # Base sampling probabilities from class frequencies
+            p = torch.tensor(classes_by_index_len, dtype=torch.float32)
+            p = p / p.sum()
+            # Add a small constant to avoid zero concentration parameters for Dirichlet
+            p = p + 1e-6
+            # Dirichlet concentration vector (can be unnormalized)
+            q = dirichlet.Dirichlet(p).sample()
             while(len(clients_labels[i]) < M):
                 sampled_class = torch.multinomial(q, 1) 
                 if classes_by_index_len[sampled_class] == 0: 
@@ -782,6 +785,9 @@ client_number = 60
 dirichlet_alpha = 0.5
 
 # Split fmnist to clients by Dirichlet distribution.
+# LABEL_DRIFT=1 in the environment enables non-iid Dirichlet label drift
+USE_NONIID_LABEL_DRIFT = os.environ.get("LABEL_DRIFT", "0") == "1"
+partition_tag = "noniid" if USE_NONIID_LABEL_DRIFT else "iid"
 
 print('splitting clients...')
 
@@ -791,7 +797,12 @@ original_labels_tr = [Y for X, Y in train_data]
 original_images_te = [X for X, Y in test_data]
 original_labels_te = [Y for X, Y in test_data]
 
-clients_images, clients_labels = get_iid_class_and_labels(original_images_tr, original_labels_tr, client_number)
+if USE_NONIID_LABEL_DRIFT:
+    print("Using Dirichlet-based non-iid label partition (label drift enabled).")
+    clients_images, clients_labels = get_noniid_class_and_labels(original_images_tr, original_labels_tr, client_number)
+else:
+    print("Using iid label partition (no additional label drift in data generator).")
+    clients_images, clients_labels = get_iid_class_and_labels(original_images_tr, original_labels_tr, client_number)
 
 
 # random_clients = [i for i in range(client_number)]
@@ -835,12 +846,14 @@ for i in range(client_number):
 
 print('saving...')
 
+dataset_root = f'./data/fmnist-c-60_client-simple2-{partition_tag}-4concept-change-name-version2'
 
 for i in range(client_number):
     client = {'images': np.uint8(np.array(clients_images[i])),
               'labels': np.uint8(np.array(clients_labels[i])),
               'type': clients_types[i]}
-    save_data(client,'./data/fmnist-c-60_client-simple2-iid-4concept-change-name-version2/{}.pkl'.format(i))
+    save_data(client, f'{dataset_root}/{i}.pkl')
+
 
 
 print('saving test...')
@@ -886,10 +899,10 @@ client_4 = {'images': np.uint8(np.array(test_fmnist_c)),
 # save_data(client_1,'./data/fmnist-c/test-1.pkl')
 # save_data(client_2,'./data/fmnist-c/test-2.pkl')
 # save_data(client_3,'./data/fmnist-c/test-3.pkl')
-save_data(client_1,'./data/fmnist-c-60_client-simple2-iid-4concept-change-name-version2/test-1.pkl')
-save_data(client_2,'./data/fmnist-c-60_client-simple2-iid-4concept-change-name-version2/test-2.pkl')
-save_data(client_3,'./data/fmnist-c-60_client-simple2-iid-4concept-change-name-version2/test-3.pkl')
-save_data(client_4,'./data/fmnist-c-60_client-simple2-iid-4concept-change-name-version2/test-4.pkl')
+save_data(client_1, f'{dataset_root}/test-1.pkl')
+save_data(client_2, f'{dataset_root}/test-2.pkl')
+save_data(client_3, f'{dataset_root}/test-3.pkl')
+save_data(client_4, f'{dataset_root}/test-4.pkl')
 print('Done.')
 
 
