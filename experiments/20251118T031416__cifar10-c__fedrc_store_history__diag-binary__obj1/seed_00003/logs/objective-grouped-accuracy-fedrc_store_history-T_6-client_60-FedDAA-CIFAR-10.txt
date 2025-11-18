@@ -1,0 +1,109 @@
+================================================================================
+LEGEND
+--------------------------------------------------------------------------------
+Personalization (P) Clients: P-clients on current local test (final slot).
+Generalization (G) Clients: G-clients on previous (old) local test (final slot; if available).
+Overall (All Clients): All clients on current local test (final slot).
+GLOBAL TEST (Global P/G): P/G-clients on the fixed global test set (baseline).
+P_on_local / G_on_local: P/G-clients on current local test.
+P_on_global / G_on_global: P/G-clients on the fixed global test set.
+Overall Global (All Clients): All clients on the fixed global test set.
+TASKS@FINAL (Rotation): Mean accuracy at final slot on rotation-stratified test sets (0°, 120°, 240°).
+ALL PAST CONCEPTS @ FINAL: Mean accuracy across all stored past test iterators.
+Objective-aware OLD (P:local, G:old) is intentionally omitted here.
+================================================================================
+
+FINAL TEST ACCURACY GROUPED BY OBJECTIVE
+================================================================================
+
+n_clients=60
+nP=30, nG=30
+
+P Clients (current local)
+--------------------------------------------------------------------------------
+  Mean:   0.9587
+  Std:    0.0255
+  Min:    0.8690
+  Median: 0.9643
+  Max:    1.0000
+
+G Clients (current local)
+--------------------------------------------------------------------------------
+  Mean:   0.9611
+  Std:    0.0182
+  Min:    0.9048
+  Median: 0.9643
+  Max:    0.9881
+
+G Clients (old local)
+--------------------------------------------------------------------------------
+  Mean:   0.2254
+  Std:    0.0557
+  Min:    0.1190
+  Median: 0.2262
+  Max:    0.3690
+
+All Clients (current local)
+--------------------------------------------------------------------------------
+  Mean:   0.9599
+  Std:    0.0220
+  Min:    0.8690
+  Median: 0.9643
+  Max:    1.0000
+
+P Clients (global test)
+--------------------------------------------------------------------------------
+  Mean:   0.2427
+  Std:    0.0161
+  Min:    0.2258
+  Median: 0.2575
+  Max:    0.2575
+
+G Clients (global test)
+--------------------------------------------------------------------------------
+  Mean:   0.2406
+  Std:    0.0161
+  Min:    0.2258
+  Median: 0.2258
+  Max:    0.2575
+
+All Clients (global test)
+--------------------------------------------------------------------------------
+  Mean:   0.2416
+  Std:    0.0160
+  Min:    0.2258
+  Median: 0.2416
+  Max:    0.2575
+
+TASKS@FINAL (Rotation)
+--------------------------------------------------------------------------------
+(rotation=0°)   Mean: 0.2440
+(rotation=120°) Mean: 0.1255
+(rotation=240°) Mean: 0.1400
+
+ALL PAST CONCEPTS @ FINAL
+--------------------------------------------------------------------------------
+All clients
+--------------------------------------------------------------------------------
+  Mean:   0.9599
+  Std:    0.0220
+  Min:    0.8690
+  Median: 0.9643
+  Max:    1.0000
+
+P clients
+--------------------------------------------------------------------------------
+  Mean:   0.9587
+  Std:    0.0255
+  Min:    0.8690
+  Median: 0.9643
+  Max:    1.0000
+
+G clients
+--------------------------------------------------------------------------------
+  Mean:   0.9611
+  Std:    0.0182
+  Min:    0.9048
+  Median: 0.9643
+  Max:    0.9881
+
