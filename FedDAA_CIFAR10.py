@@ -3,14 +3,102 @@ from sklearn import cluster
 from utils.utils import *
 from utils.constants import *
 from utils.args import *
+from utils.experiment_logging import ExperimentLogger
+from utils.metrics_utils import sample_stats
+from utils.experiment_helpers import (
+    parse_seed_argument,
+    evaluate_iterator_accuracy,
+    build_bar_plot,
+    aggregate_summary,
+)
 
 from torch.utils.tensorboard import SummaryWriter
 
 import copy
+import numpy as np
+import os
+import shutil
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from sklearn.mixture import GaussianMixture
 from torch.utils.data import DataLoader, ConcatDataset
 from sklearn.metrics import silhouette_score
+
+
+def _assign_objectives_random_ratio(clients, ratio_spec: str, seed: int):
+    """
+    Assign objectives 'G'/'P' to clients according to a ratio specification,
+    e.g. ratio_spec = 'G:70,P:30'.
+    """
+    if not clients:
+        return
+    # Parse ratios
+    ratios = {"G": 0.0, "P": 0.0}
+    for part in ratio_spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if ":" not in part:
+            continue
+        key, val = part.split(":", 1)
+        key = key.strip().upper()
+        if key not in ratios:
+            continue
+        try:
+            ratios[key] += float(val.strip())
+        except ValueError:
+            continue
+    total = ratios["G"] + ratios["P"]
+    if total <= 0:
+        # Fallback: 50/50
+        ratios = {"G": 1.0, "P": 1.0}
+        total = 2.0
+    n = len(clients)
+    n_G = int(round(n * ratios["G"] / total))
+    n_P = n - n_G
+    assignment = ["G"] * n_G + ["P"] * n_P
+    rng = np.random.RandomState(seed)
+    rng.shuffle(assignment)
+    for client, obj in zip(clients, assignment):
+        setattr(client, "objective", obj)
+
+
+def assign_objectives(clients, assignment_str: str, seed: int):
+    """
+    Lightweight objective assignment hook.
+
+    This only sets client.objective and does NOT change training logic.
+    Supported patterns:
+      - 'all:G' or 'all:P'
+      - 'random_ratio:G:70,P:30'
+    """
+    if not assignment_str:
+        return
+    assignment_str = assignment_str.strip()
+    if not assignment_str:
+        return
+
+    # All clients same objective
+    if assignment_str.startswith("all:"):
+        obj = assignment_str.split(":", 1)[1].strip().upper()
+        if obj not in ("G", "P"):
+            return
+        for client in clients:
+            setattr(client, "objective", obj)
+        return
+
+    # Random ratio G/P
+    if assignment_str.startswith("random_ratio:"):
+        ratio_spec = assignment_str[len("random_ratio:") :]
+        _assign_objectives_random_ratio(clients, ratio_spec, seed=seed)
+        return
+
+    # Fallback: do nothing for unsupported patterns (keep behaviour unchanged)
+    return
 
 def init_clients(args_, root_path, logs_dir):
     """
@@ -1827,6 +1915,19 @@ def run_experiment(args_):
 
     test_clients = test_clients_0degree+test_clients_120degree+test_clients_240degree
 
+    # Initialize per-client test history (slot concepts) if requested
+    if getattr(args_, "eval_all_past_concepts", False):
+        for c in clients:
+            try:
+                c._test_history = [copy.deepcopy(c.test_iterator)]
+            except Exception:
+                c._test_history = []
+
+    # Optional objective assignment (does not change training logic by default)
+    if hasattr(args_, "objective_assignment") and args_.objective_assignment:
+        assign_objectives(clients, args_.objective_assignment, seed=args_.seed)
+        assign_objectives(test_clients, args_.objective_assignment, seed=args_.seed)
+
     logs_path = os.path.join(logs_dir, "train", "global")
     os.makedirs(logs_path, exist_ok=True)
     global_train_logger = SummaryWriter(logs_path)
@@ -1834,6 +1935,26 @@ def run_experiment(args_):
     logs_path = os.path.join(logs_dir, "test", "global")
     os.makedirs(logs_path, exist_ok=True)
     global_test_logger = SummaryWriter(logs_path)
+
+    # Optional fixed 0° global test iterator (evaluation only)
+    global_test_iterator = None
+    if getattr(args_, "global_eval", False):
+        try:
+            from torch.utils.data import ConcatDataset
+            from torch.utils.data import DataLoader as TorchDataLoader
+            global_test_dataset = ConcatDataset(
+                [copy.deepcopy(c.test_iterator.dataset) for c in test_clients_0degree]
+            )
+            global_test_iterator = TorchDataLoader(
+                global_test_dataset,
+                batch_size=args_.bz,
+                shuffle=False,
+                drop_last=False,
+            )
+            print("==> Global test iterator initialized (fixed baseline, 0° rotation)")
+        except Exception as e:
+            print(f"[WARN] Failed to build global test iterator: {e}")
+            global_test_iterator = None
 
 
     if args_.split:
@@ -2078,9 +2199,39 @@ def run_experiment(args_):
             # print("real_shift_set:",real_shift_set)
             # print("real_clean_set:",real_clean_set)
 
+            # Optional objective-aware action logging (Stage 2: evaluation only).
+            # This records, per client and time slot, whether the original
+            # pipeline treated the client as "reset" or "merge", grouped by
+            # objective label. It does NOT change any routing behavior.
+            if getattr(args_, "objective_aware", False):
+                try:
+                    obj_logs_dir = os.path.join("logs", args_.experiment)
+                    os.makedirs(obj_logs_dir, exist_ok=True)
+                    objective_log_path = os.path.join(
+                        obj_logs_dir,
+                        f"objective-actions-{args_.method}-{args_.gamma}-{args_.suffix}.txt",
+                    )
+                    with open(objective_log_path, "a+") as fobj:
+                        fobj.write(f"time_slot={t}\n")
+                        for idx, client in enumerate(clients):
+                            # In the original pipeline, concept_shift_flag drives
+                            # whether the client is effectively "reset" or "merge".
+                            action = "reset" if getattr(client, "concept_shift_flag", 0) else "merge"
+                            objective = getattr(client, "objective", "N/A")
+                            # We do not log drift types here to keep Stage 1 logic unchanged.
+                            fobj.write(f"{idx},{objective},{action}\n")
+                except Exception:
+                    pass
 
             rotate_120degree_update_clients_train_iterator_and_other_attribute(clients,rotate_degrees=rotate_degrees)
 
+            # Append current test iterator to history if requested (evaluation only)
+            if getattr(args_, "eval_all_past_concepts", False):
+                for c in clients:
+                    try:
+                        c._test_history.append(copy.deepcopy(c.test_iterator))
+                    except Exception:
+                        pass
 
             prediction_accuracy = get_shift_clients_prediction_accuracy(shift_set=shift_set,clean_set=clean_set,
                                                                         real_shift_set=real_shift_set,real_clean_set=real_clean_set)
@@ -2094,6 +2245,33 @@ def run_experiment(args_):
             recall = get_shift_clients_recall(shift_set=shift_set,real_shift_set=real_shift_set)
             recall_list.append(recall)
             # print("recall:",recall)
+
+            # Lightweight per-slot summary (Stage 1, objective-agnostic).
+            # This mirrors the modified repo's slot-summary file but only
+            # logs non-objective-aware quantities.
+            try:
+                slot_logs_dir = os.path.join("logs", args_.experiment)
+                os.makedirs(slot_logs_dir, exist_ok=True)
+                slot_summary_path = os.path.join(
+                    slot_logs_dir,
+                    f"slot-summary-{args_.method}-{args_.gamma}-{args_.suffix}.txt",
+                )
+                with open(slot_summary_path, "a+") as fsum:
+                    fsum.write(f"time_slot={t}\n")
+                    fsum.write(f"rotate_degrees={rotate_degrees}\n")
+                    fsum.write(f"cluster_num={cluster_num}\n")
+                    fsum.write(f"n_clients={len(clients)}\n")
+                    fsum.write(f"n_shift={len(shift_set)}\n")
+                    fsum.write(f"n_clean={len(clean_set)}\n")
+                    fsum.write(f"n_real_shift={len(real_shift_set)}\n")
+                    fsum.write(f"n_real_clean={len(real_clean_set)}\n")
+                    fsum.write(f"prediction_accuracy={float(prediction_accuracy):.4f}\n")
+                    fsum.write(f"precision={float(precision):.4f}\n")
+                    fsum.write(f"recall={float(recall):.4f}\n")
+                    fsum.write("-" * 80 + "\n")
+            except Exception:
+                # Slot summary logging is best-effort only.
+                pass
 
 
 
@@ -2209,9 +2387,8 @@ def run_experiment(args_):
             os.makedirs(save_dir, exist_ok=True)
             aggregator.save_state(save_dir)
 
-     
-        with open('./logs/{}/drift-prediction-result-{}-{}-{}.txt'.format(args_.experiment, args_.method, args_.gamma,
-                                                                  args_.suffix), 'a+') as f:
+        with open('./logs/{}/drift-prediction-result-{}-{}-{}.txt'.format(
+                args_.experiment, args_.method, args_.gamma, args_.suffix), 'a+') as f:
             f.write("prediction_accuracy_list:")
             f.write('{}'.format(prediction_accuracy_list))
             f.write('\n')
@@ -2222,10 +2399,349 @@ def run_experiment(args_):
             f.write('{}'.format(recall_list))
             f.write('\n')
 
+        # Additional evaluation metrics (evaluation only; no effect on training)
+        eval_metrics = {}
+
+        # Drift detection summary across slots
+        eval_metrics["detection_stats"] = {
+            "accuracy": sample_stats(prediction_accuracy_list),
+            "precision": sample_stats(precision_list),
+            "recall": sample_stats(recall_list),
+        }
+
+        # Global evaluation on fixed 0° test iterator
+        if 'global_test_iterator' in locals() and global_test_iterator is not None:
+            global_accs = []
+            for c in clients:
+                acc = evaluate_iterator_accuracy(c.learners_ensemble, global_test_iterator)
+                if acc is not None:
+                    global_accs.append(acc)
+            if global_accs:
+                eval_metrics["global_eval_mean"] = float(np.mean(global_accs))
+                eval_metrics["global_eval_std"] = float(np.std(global_accs))
+
+        # All past concepts: per-client mean over test history (final slot)
+        if getattr(args_, "eval_all_past_concepts", False):
+            per_client_means = []
+            for c in clients:
+                history = getattr(c, "_test_history", None)
+                if not history:
+                    continue
+                accs = []
+                for it in history:
+                    a = evaluate_iterator_accuracy(c.learners_ensemble, it)
+                    if a is not None:
+                        accs.append(a)
+                if accs:
+                    per_client_means.append(float(np.mean(accs)))
+            if per_client_means:
+                eval_metrics["all_past_concepts_mean"] = float(np.mean(per_client_means))
+                eval_metrics["all_past_concepts_std"] = float(np.std(per_client_means))
+
+        # TASKS@FINAL (Rotation): mean accuracy at final slot per rotation
+        try:
+            def _mean_acc_over(test_list):
+                vals = []
+                for tc in test_list:
+                    a = evaluate_iterator_accuracy(global_learners_ensemble, tc.test_iterator)
+                    if a is not None:
+                        vals.append(a)
+                return float(np.mean(vals)) if vals else float("nan")
+
+            rot0 = _mean_acc_over(test_clients_0degree)
+            rot120 = _mean_acc_over(test_clients_120degree)
+            rot240 = _mean_acc_over(test_clients_240degree)
+            eval_metrics["tasks_final_rotation"] = {
+                "rot_0": rot0,
+                "rot_120": rot120,
+                "rot_240": rot240,
+            }
+        except Exception:
+            pass
+
+        # Return basic drift metrics plus extra evaluation summaries so
+        # the multi-seed wrapper can aggregate across seeds.
+        eval_metrics.update({
+            "prediction_accuracy_list": prediction_accuracy_list,
+            "precision_list": precision_list,
+            "recall_list": recall_list,
+        })
+
+        # Objective-grouped evaluation metrics and grouped accuracy.
+        # These are computed purely from final-slot models and do NOT change training,
+        # routing, or drift detection behavior. They are active whenever objectives
+        # have been assigned (objective_assignment), regardless of whether the
+        # routing itself is objective-aware.
+        if getattr(args_, "objective_assignment", None):
+            try:
+                # Per-client final accuracies on local current, old (if available), and global.
+                p_curr, g_curr, all_curr = [], [], []
+                p_global, g_global, all_global = [], [], []
+                p_old, g_old = [], []
+
+                # Evaluate on fixed global iterator if available.
+                def _eval_global(client):
+                    if 'global_test_iterator' in locals() and global_test_iterator is not None:
+                        return evaluate_iterator_accuracy(client.learners_ensemble, global_test_iterator)
+                    return None
+
+                for c in clients:
+                    obj = getattr(c, "objective", "G")
+                    acc_curr = evaluate_iterator_accuracy(c.learners_ensemble, c.test_iterator)
+                    acc_old = evaluate_iterator_accuracy(
+                        c.learners_ensemble,
+                        getattr(c, "last_test_iterator", None),
+                    )
+                    acc_global = _eval_global(c)
+
+                    if acc_curr is not None:
+                        all_curr.append(acc_curr)
+                        if obj == "P":
+                            p_curr.append(acc_curr)
+                        else:
+                            g_curr.append(acc_curr)
+                    if acc_old is not None:
+                        if obj == "P":
+                            p_old.append(acc_old)
+                        else:
+                            g_old.append(acc_old)
+                    if acc_global is not None:
+                        all_global.append(acc_global)
+                        if obj == "P":
+                            p_global.append(acc_global)
+                        else:
+                            g_global.append(acc_global)
+
+                # Define objective-aware scores:
+                #  - P: current local accuracy.
+                #  - G: global test accuracy (baseline).
+                p_scores = p_curr
+                g_scores = g_global
+
+                # Stats for JSON metrics.
+                stats_block = eval_metrics.setdefault("stats", {})
+                if p_scores:
+                    stats_block["p_scores"] = sample_stats(p_scores)
+                if g_scores:
+                    stats_block["g_scores"] = sample_stats(g_scores)
+                if all_curr:
+                    stats_block["overall_current"] = sample_stats(all_curr)
+                if all_global:
+                    stats_block["overall_global"] = sample_stats(all_global)
+                if g_old:
+                    # G-clients' old local accuracy (useful for forgetting),
+                    # but we do NOT compute the mixed "Objective-aware OLD" metric.
+                    stats_block["G_old_local"] = sample_stats(g_old)
+
+                eval_metrics["p_scores"] = p_scores
+                eval_metrics["g_scores"] = g_scores
+
+                # Human-readable grouped accuracy summary (final slot).
+                logs_base_path = os.path.join("logs", args_.experiment)
+                os.makedirs(logs_base_path, exist_ok=True)
+                objective_summary_path = os.path.join(
+                    logs_base_path,
+                    f"objective-grouped-accuracy-{args_.method}-{args_.suffix}.txt",
+                )
+                with open(objective_summary_path, "w") as f:
+                    f.write("=" * 80 + "\n")
+                    f.write("LEGEND\n")
+                    f.write("-" * 80 + "\n")
+                    f.write("Personalization (P) Clients: P-clients on current local test (final slot).\n")
+                    f.write("Generalization (G) Clients: G-clients on previous (old) local test (final slot; if available).\n")
+                    f.write("Overall (All Clients): All clients on current local test (final slot).\n")
+                    f.write("GLOBAL TEST (Global P/G): P/G-clients on the fixed global test set (baseline).\n")
+                    f.write("P_on_local / G_on_local: P/G-clients on current local test.\n")
+                    f.write("P_on_global / G_on_global: P/G-clients on the fixed global test set.\n")
+                    f.write("Overall Global (All Clients): All clients on the fixed global test set.\n")
+                    f.write("TASKS@FINAL (Rotation): Mean accuracy at final slot on rotation-stratified test sets (0°, 120°, 240°).\n")
+                    f.write("ALL PAST CONCEPTS @ FINAL: Mean accuracy across all stored past test iterators.\n")
+                    f.write("Objective-aware OLD (P:local, G:old) is intentionally omitted here.\n")
+                    f.write("=" * 80 + "\n\n")
+                    f.write("FINAL TEST ACCURACY GROUPED BY OBJECTIVE\n")
+                    f.write("=" * 80 + "\n\n")
+                    f.write(f"n_clients={len(clients)}\n")
+                    nP = sum(1 for c in clients if getattr(c, "objective", "G") == "P")
+                    nG = sum(1 for c in clients if getattr(c, "objective", "G") == "G")
+                    f.write(f"nP={nP}, nG={nG}\n\n")
+
+                    def _write_block(title, vals):
+                        if not vals:
+                            return
+                        s = sample_stats(vals)
+                        f.write(f"{title}\n")
+                        f.write("-" * 80 + "\n")
+                        f.write(f"  Mean:   {s['mean']:.4f}\n")
+                        f.write(f"  Std:    {s['std']:.4f}\n")
+                        f.write(f"  Min:    {s['min']:.4f}\n")
+                        f.write(f"  Median: {s['median']:.4f}\n")
+                        f.write(f"  Max:    {s['max']:.4f}\n\n")
+
+                    _write_block("P Clients (current local)", p_curr)
+                    _write_block("G Clients (current local)", g_curr)
+                    _write_block("G Clients (old local)", g_old)
+                    _write_block("All Clients (current local)", all_curr)
+                    _write_block("P Clients (global test)", p_global)
+                    _write_block("G Clients (global test)", g_global)
+                    _write_block("All Clients (global test)", all_global)
+
+                    # TASKS@FINAL (Rotation) using rotation-specific test clients
+                    try:
+                        def _mean_acc_over(test_list):
+                            vals = []
+                            for tc in test_list:
+                                a = evaluate_iterator_accuracy(global_learners_ensemble, tc.test_iterator)
+                                if a is not None:
+                                    vals.append(a)
+                            return float(np.mean(vals)) if vals else float("nan")
+
+                        rot0 = _mean_acc_over(test_clients_0degree)
+                        rot120 = _mean_acc_over(test_clients_120degree)
+                        rot240 = _mean_acc_over(test_clients_240degree)
+                        f.write("TASKS@FINAL (Rotation)\n")
+                        f.write("-" * 80 + "\n")
+                        f.write(f"(rotation=0°)   Mean: {rot0:.4f}\n")
+                        f.write(f"(rotation=120°) Mean: {rot120:.4f}\n")
+                        f.write(f"(rotation=240°) Mean: {rot240:.4f}\n\n")
+                    except Exception:
+                        pass
+
+                    # ALL PAST CONCEPTS @ FINAL (if histories were stored)
+                    if getattr(args_, "eval_all_past_concepts", False):
+                        all_hist, p_hist, g_hist = [], [], []
+                        for c in clients:
+                            history = getattr(c, "_test_history", None)
+                            if not history:
+                                continue
+                            accs = []
+                            for it in history:
+                                a = evaluate_iterator_accuracy(c.learners_ensemble, it)
+                                if a is not None:
+                                    accs.append(a)
+                            if not accs:
+                                continue
+                            mean_acc = float(np.mean(accs))
+                            all_hist.append(mean_acc)
+                            if getattr(c, "objective", "G") == "P":
+                                p_hist.append(mean_acc)
+                            else:
+                                g_hist.append(mean_acc)
+
+                        if all_hist:
+                            f.write("ALL PAST CONCEPTS @ FINAL\n")
+                            f.write("-" * 80 + "\n")
+                            _write_block("All clients", all_hist)
+                            _write_block("P clients", p_hist)
+                            _write_block("G clients", g_hist)
+
+            except Exception:
+                # Objective-aware evaluation is best-effort and must never
+                # affect the core training or baseline metrics.
+                pass
+
+        return eval_metrics
+
+
+def _copy_text_logs_to_seed_dirs(args, seed_logs_dir):
+    """
+    Convenience helper: copy original TXT logs from ./logs/<experiment>/*
+    into the structured experiments/.../seed_x/logs directory.
+    This does not affect training or metrics; it only mirrors outputs.
+    """
+    root_logs_dir = os.path.join("logs", args.experiment)
+    if not os.path.isdir(root_logs_dir):
+        return
+
+    patterns = [
+        # Global / task-level summaries
+        f"results-{args.method}-{args.suffix}.txt",
+        f"test-results-{args.method}-{args.suffix}.txt",
+        # Drift detection summary
+        f"drift-prediction-result-{args.method}-{args.gamma}-{args.suffix}.txt",
+        # Cluster / weighting diagnostics (classic FedDAA logs)
+        f"sample-weight-{args.method}-{args.suffix}.txt",
+        f"mean-I-{args.method}-{args.gamma}-{args.suffix}.txt",
+        f"cluster-weights-{args.method}-{args.gamma}-{args.suffix}.txt",
+        f"determine_cluster_number-{args.method}-{args.gamma}-{args.suffix}.txt",
+        # Per-slot summary (Stage 1, objective-agnostic)
+        f"slot-summary-{args.method}-{args.gamma}-{args.suffix}.txt",
+        # Objective-aware logs (Stage 2, evaluation only)
+        f"objective-actions-{args.method}-{args.gamma}-{args.suffix}.txt",
+        f"objective-grouped-accuracy-{args.method}-{args.suffix}.txt",
+    ]
+    for name in patterns:
+        src = os.path.join(root_logs_dir, name)
+        if os.path.exists(src):
+            dst = os.path.join(seed_logs_dir, name)
+            try:
+                shutil.copy2(src, dst)
+            except Exception:
+                # Mirroring is best-effort; ignore copy failures.
+                pass
+
 
 if __name__ == "__main__":
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
     args = parse_args()
-    run_experiment(args)
+    seeds = parse_seed_argument(getattr(args, "seeds", None), args.seed)
+    logger = ExperimentLogger(args, seeds)
+    seed_metrics = []
+    for seed in seeds:
+        seed_args = copy.deepcopy(args)
+        seed_args.seed = seed
+        # Redirect logs into experiments/.../seed_x/logs
+        seed_logs_dir = logger.seed_logs_dir(seed)
+        seed_args.logs_dir = str(seed_logs_dir)
+        metrics = run_experiment(seed_args)
+        seed_metrics.append(metrics or {})
+
+        # Persist per-seed metrics JSON under experiments/.../seed_x/metrics
+        logger.write_metrics(seed, metrics or {})
+
+        # Mirror original TXT logs into experiments/.../seed_x/logs
+        _copy_text_logs_to_seed_dirs(seed_args, seed_logs_dir)
+
+        # Simple drift-detection diagnostics plot (per seed, optional)
+        try:
+            if metrics:
+                acc_list = metrics.get("prediction_accuracy_list", []) or []
+                prec_list = metrics.get("precision_list", []) or []
+                rec_list = metrics.get("recall_list", []) or []
+                if any(len(lst) > 0 for lst in (acc_list, prec_list, rec_list)):
+                    x = list(range(len(acc_list or prec_list or rec_list)))
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    if acc_list:
+                        ax.plot(x, acc_list, marker="o", label="accuracy")
+                    if prec_list:
+                        ax.plot(x, prec_list, marker="s", label="precision")
+                    if rec_list:
+                        ax.plot(x, rec_list, marker="^", label="recall")
+                    ax.set_xlabel("Time slot t")
+                    ax.set_ylabel("Score")
+                    ax.set_title("Drift detection over time")
+                    ax.set_ylim(0.0, 1.0)
+                    ax.grid(True, linestyle="--", alpha=0.4)
+                    ax.legend()
+                    logger.write_plot(seed, "drift_detection.png", fig)
+                    plt.close(fig)
+        except Exception:
+            # Plotting is best-effort only
+            pass
+
+    aggregate = aggregate_summary(seed_metrics)
+
+    logger.save_summary({
+        "per_seed": seed_metrics,
+        "aggregate": aggregate,
+    })
+
+    print("\n=== FedORA Summary ===")
+    print(f"Seeds: {seeds}")
+    if 'p_scores' in aggregate:
+        print(f"P-Score mean±std: {aggregate['p_scores']['mean']:.4f} ± {aggregate['p_scores']['std']:.4f}")
+    if 'g_scores' in aggregate:
+        print(f"G-Score mean±std: {aggregate['g_scores']['mean']:.4f} ± {aggregate['g_scores']['std']:.4f}")
+    if 'forgetting' in aggregate:
+        print(f"Forgetting ratio mean±std: {aggregate['forgetting']['mean']:.4f} ± {aggregate['forgetting']['std']:.4f}")

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+logs/
+output/
+results/
+experiments/
+runs/
+
+# Datasets & models
+data/
+datasets/
+*.pt
+*.pth
+*.h5
+*.ckpt
+*.npz
+*.npy
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# OS files
+.DS_Store

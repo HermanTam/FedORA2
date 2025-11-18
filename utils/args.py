@@ -184,6 +184,18 @@ def parse_args(args_list=None):
         help='if selected, will add a domain discriminator to learn more robust feature extractors',
         action='store_true'
     )
+    # Objective-aware evaluation / routing (optional, default off)
+    parser.add_argument(
+        "--objective_aware",
+        help='if selected, enable objective-aware evaluation/routing (uses per-client objective labels G/P)',
+        action='store_true'
+    )
+    parser.add_argument(
+        "--objective_assignment",
+        help='optional client objective assignment, e.g. "random_ratio:G:70,P:30" or "all:G"/"all:P"',
+        type=str,
+        default=None
+    )
     parser.add_argument(
         "--phi_model",
         help='if selected, will add an additional model phi for distance calculation (for stoCFL)',
@@ -218,6 +230,12 @@ def parse_args(args_list=None):
         default=1234
     )
     parser.add_argument(
+        "--seeds",
+        help='comma-separated list of seeds for multi-trial experiments (overrides --seed when provided)',
+        type=str,
+        default=None
+    )
+    parser.add_argument(
         '--embedding_dimension',
         help='the dimension of the internal embedding',
         type=int,
@@ -242,6 +260,20 @@ def parse_args(args_list=None):
         help='concept drift time slot',
         type=int,
         default=2
+    )
+    # Always-on evaluation knobs (default True) for convenience.
+    # These only add extra evaluation passes; they do not change training logic.
+    parser.add_argument(
+        "--global_eval",
+        help='evaluate on a fixed 0° global test set aggregated from initial test clients',
+        action='store_true',
+        default=True
+    )
+    parser.add_argument(
+        "--eval_all_past_concepts",
+        help='at the end, evaluate models on all per-slot test iterators recorded over time',
+        action='store_true',
+        default=True
     )
 
 
