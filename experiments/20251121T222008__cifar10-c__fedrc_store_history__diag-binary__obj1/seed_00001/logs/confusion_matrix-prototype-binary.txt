@@ -1,0 +1,11 @@
+Drift Detector: prototype, Diagnosis Mode: binary
+
+True \ Predicted	clean	shift
+clean	7	6
+shift	2	45
+
+Per-Class Metrics:
+clean: Precision=77.78%, Recall=53.85%, F1=63.64%
+shift: Precision=88.24%, Recall=95.74%, F1=91.84%
+
+Overall Accuracy: 86.67%

@@ -1,0 +1,371 @@
+================================================================================
+TIME-TO-ACCURACY (TTA) METRICS
+================================================================================
+
+T=6 time slots, n_rounds=40 rounds/slot
+Total rounds: 240
+
+
+GLOBAL_TRAIN_ACC
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+GLOBAL_TEST_ACC
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+LOCAL_ALL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+GLOBAL_ALL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+OBJECTIVE_AWARE
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+OBJECTIVE_AWARE_OLD
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+OBJECTIVE_AWARE_GLOBAL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+P_LOCAL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+G_LOCAL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+G_OLD
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+P_GLOBAL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+G_GLOBAL
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+TEST_12_TRAIN
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+
+
+TEST_12_TEST
+--------------------------------------------------------------------------------
+Overall TTA (across all rounds):
+  TTA-60: Never reached
+  TTA-65: Never reached
+  TTA-70: Never reached
+  TTA-80: Never reached
+  TTA-85: Never reached
+  TTA-90: Never reached
+  TTA-95: Never reached
+
+Per-Slot TTA (mean/median/std across slots):
+  TTA-60:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-65:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-70:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-80:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-85:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+  TTA-90:
+    Per-slot: [-1, -1, -1, -1, -1, -1]
+

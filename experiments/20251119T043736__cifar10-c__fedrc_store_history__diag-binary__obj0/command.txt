@@ -1,0 +1,1 @@
+FedDAA_CIFAR10.py cifar10-c fedrc_store_history --n_learners 2 --bz 128 --lr 0.06 --lr_scheduler constant --log_freq 1 --optimizer sgd --seeds 1,2,3 --verbose 1 --T 6 --n_rounds 40 --device 0 --sampling_rate 0.5 --suffix T_6-client_60-FedDAA-CIFAR-10 --objective_assignment random_ratio:G:50,P:50 --cl_strategy experience_replay
